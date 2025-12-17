@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>DeepWaterMap UI</title>
+  <style>
+    :root { --bg:#0b0f19; --muted:#94a3b8; --text:#e5e7eb; --border:rgba(148,163,184,0.18); --accent:#60a5fa; --danger:#f87171; --ok:#34d399; }
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#070a12,var(--bg));color:var(--text);}
+    .wrap{max-width:1200px;margin:0 auto;padding:18px;}
+    .title{display:flex;align-items:baseline;gap:12px;margin:6px 0 14px;}
+    .title h1{font-size:20px;margin:0;}
+    .pill{font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);}
+    .grid{display:grid;grid-template-columns:380px 1fr;gap:16px;}
+    .card{background:rgba(17,24,39,0.7);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,0.25);backdrop-filter:blur(6px);}
+    h2{font-size:14px;margin:0 0 12px;color:#dbeafe;}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px;}
+    input[type="file"],input[type="number"],input[type="text"]{width:100%;padding:10px 10px;border-radius:12px;border:1px solid var(--border);background:rgba(2,6,23,0.6);color:var(--text);outline:none;}
+    .row{display:flex;gap:10px;}
+    .row>div{flex:1;}
+    .btns{display:flex;gap:10px;margin-top:12px;}
+    button{border:1px solid var(--border);background:rgba(96,165,250,0.15);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:600;}
+    button:hover{border-color:rgba(96,165,250,0.6);}
+    .secondary{background:rgba(148,163,184,0.10);}
+    .status{margin-top:10px;font-size:12px;color:var(--muted);}
+    .status .err{color:var(--danger);}
+    .status .ok{color:var(--ok);}
+    .vizGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .viz{border:1px solid var(--border);border-radius:14px;padding:10px;background:rgba(2,6,23,0.35);}
+    .viz h3{margin:0 0 8px;font-size:12px;color:#bfdbfe;display:flex;justify-content:space-between;align-items:center;}
+    .viz img{width:100%;border-radius:10px;border:1px solid rgba(148,163,184,0.14);background:#0b1220;}
+    .small{font-size:11px;color:var(--muted);}
+    .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+    .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted);}
+    .sw{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,0.25);}
+    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+    .kv{border:1px solid var(--border);border-radius:12px;padding:8px 10px;background:rgba(2,6,23,0.35);}
+    .kv .k{font-size:11px;color:var(--muted);}
+    .kv .v{font-size:14px;font-weight:700;margin-top:2px;}
+    a.dl{color:var(--accent);text-decoration:none;font-size:12px;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <h1>DeepWaterMap — Upload & Visualize</h1>
+      <div class="pill">prob [0,1], binary, NDWI, diff, overlay</div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Inputs</h2>
+
+        <label>Upload (.npy or .tif/.tiff)</label>
+        <input id="file" type="file" accept=".npy,.tif,.tiff"/>
+
+        <div class="row">
+          <div>
+            <label>NDWI threshold</label>
+            <input id="ndwi_thr" type="number" step="0.01" value="0.0"/>
+          </div>
+          <div>
+            <label>Pred threshold (optional)</label>
+            <input id="pred_thr" type="number" step="0.01" min="0" max="1" placeholder="leave empty for auto"/>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Sweep step (auto pred thr)</label>
+            <input id="sweep_step" type="number" step="0.01" min="0.001" max="0.1" value="0.01"/>
+          </div>
+          <div>
+            <label>Band order (optional)</label>
+            <input id="band_order" type="text" placeholder="e.g. B1,B2,B3,B4,B5,B6,B7,B8,B8A,B9,B11,B12"/>
+          </div>
+        </div>
+
+        <div class="btns">
+          <button id="run">Run /predict</button>
+          <button class="secondary" id="clear">Clear</button>
+        </div>
+
+        <div class="status" id="status">Ready.</div>
+
+        <div class="legend">
+          <div class="chip"><span class="sw" style="background:#ffffff"></span> TN</div>
+          <div class="chip"><span class="sw" style="background:#0000ff"></span> TP</div>
+          <div class="chip"><span class="sw" style="background:#ff0000"></span> FP</div>
+          <div class="chip"><span class="sw" style="background:#ffa500"></span> FN</div>
+        </div>
+
+        <div class="metrics" id="metrics"></div>
+
+        <div style="margin-top:10px" class="small" id="downloads"></div>
+      </div>
+
+      <div class="card">
+        <h2>Visualization</h2>
+        <div class="vizGrid">
+          <div class="viz">
+            <h3>RGB (if available) <span class="small" id="shape"></span></h3>
+            <img id="rgb" />
+          </div>
+          <div class="viz">
+            <h3>Overlay (prob → blue)</h3>
+            <img id="overlay" />
+          </div>
+
+          <div class="viz">
+            <h3>Pred prob (white→blue)</h3>
+            <img id="prob" />
+          </div>
+          <div class="viz">
+            <h3>Pred binary mask</h3>
+            <img id="predbin" />
+          </div>
+
+          <div class="viz">
+            <h3>NDWI mask</h3>
+            <img id="ndwi" />
+          </div>
+          <div class="viz">
+            <h3>Comparative diff mask</h3>
+            <img id="diff" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function setStatus(msg, kind="") {
+    const el = $("status");
+    el.innerHTML = kind ? `<span class="${kind}">${msg}</span>` : msg;
+  }
+
+  function clearOutputs() {
+    ["rgb","overlay","prob","predbin","ndwi","diff"].forEach(id => { $(id).src = ""; });
+    $("metrics").innerHTML = "";
+    $("downloads").innerHTML = "";
+    $("shape").textContent = "";
+  }
+
+  function metricKV(k, v) {
+    return `<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  }
+
+  $("clear").addEventListener("click", () => { clearOutputs(); setStatus("Cleared."); });
+
+  $("run").addEventListener("click", async () => {
+    clearOutputs();
+
+    const file = $("file").files[0];
+    if (!file) { setStatus("Please choose a .npy or .tif/.tiff file.", "err"); return; }
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("ndwi_thr", $("ndwi_thr").value || "0.0");
+    fd.append("sweep_step", $("sweep_step").value || "0.01");
+
+    const predThr = $("pred_thr").value;
+    if (predThr !== "") fd.append("pred_thr", predThr);
+
+    const bandOrder = $("band_order").value.trim();
+    if (bandOrder) fd.append("band_order", bandOrder);
+
+    setStatus("Running inference…");
+
+    try {
+      const res = await fetch("/predict", { method: "POST", body: fd });
+      const js = await res.json();
+
+      if (!res.ok) { setStatus(js?.error || "Request failed", "err"); return; }
+
+      setStatus(`Done. job_id=${js.job_id}`, "ok");
+
+      const out = js.outputs || {};
+      const met = js.metrics_vs_ndwi || {};
+      const inp = js.inputs || {};
+
+      $("shape").textContent = inp.shape ? `shape: ${inp.shape.join("×")}` : "";
+
+      if (out.rgb_png) $("rgb").src = out.rgb_png + "?v=" + Date.now();
+      $("overlay").src  = out.overlay_png + "?v=" + Date.now();
+      $("prob").src     = out.pred_prob_bluewhite_png + "?v=" + Date.now();
+      $("predbin").src  = out.pred_bin_png + "?v=" + Date.now();
+      $("ndwi").src     = out.ndwi_mask_png + "?v=" + Date.now();
+      $("diff").src     = out.diff_mask_png + "?v=" + Date.now();
+
+      $("metrics").innerHTML =
+        metricKV("IoU", (met.iou ?? 0).toFixed(3)) +
+        metricKV("F1", (met.f1 ?? 0).toFixed(3)) +
+        metricKV("Precision", (met.precision ?? 0).toFixed(3)) +
+        metricKV("Recall", (met.recall ?? 0).toFixed(3)) +
+        metricKV("Diff %", ((met.diff_pct ?? 0)*100).toFixed(2) + "%") +
+        metricKV("Pred water %", ((met.pred_water_pct ?? 0)*100).toFixed(2) + "%") +
+        metricKV("NDWI water %", ((met.ndwi_water_pct ?? 0)*100).toFixed(2) + "%") +
+        metricKV("Pred thr used", (inp.pred_thr_used ?? 0).toFixed(2));
+
+      const dl = [];
+      if (out.zip) dl.push(`<a class="dl" href="${out.zip}" target="_blank">Download outputs.zip</a>`);
+      if (out.pred_prob01_npy) dl.push(`<a class="dl" href="${out.pred_prob01_npy}" target="_blank">pred_prob01.npy</a>`);
+      if (out.pred_prob01_tif) dl.push(`<a class="dl" href="${out.pred_prob01_tif}" target="_blank">pred_prob01.tif</a>`);
+      $("downloads").innerHTML = dl.join(" · ");
+    } catch (e) {
+      setStatus("Error: " + e, "err");
+    }
+  });
+</script>
+</body>
+</html>

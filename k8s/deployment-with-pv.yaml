@@ -1,0 +1,45 @@
+# OPTIONAL: Deployment variant that mounts the hostPath PVC at /models/checkpoints
+# and points CHECKPOINT_PATH there.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deepwatermap-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deepwatermap-ui
+  template:
+    metadata:
+      labels:
+        app: deepwatermap-ui
+    spec:
+      volumes:
+        - name: checkpoints
+          persistentVolumeClaim:
+            claimName: dwm-checkpoints-pvc
+      containers:
+        - name: deepwatermap-ui
+          image: deepwatermap-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CHECKPOINT_PATH
+              value: "/models/checkpoints/cp.135.ckpt"
+          volumeMounts:
+            - name: checkpoints
+              mountPath: /models/checkpoints
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20

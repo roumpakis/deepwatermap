@@ -13,7 +13,7 @@ import argparse
 import deepwatermap
 import tifffile as tiff
 import numpy as np
-import cv2
+from PIL import Image
 
 def find_padding(v, divisor=32):
     v_divisible = max(divisor, int(divisor * np.ceil( v / divisor )))
@@ -58,7 +58,7 @@ def main(checkpoint_path, image_path, save_path):
     dwm = np.clip(dwm, 0, 1)
 
     # save the output water map
-    cv2.imwrite(save_path, dwm * 255)
+    Image.fromarray((dwm * 255).astype(np.uint8)).save(save_path)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

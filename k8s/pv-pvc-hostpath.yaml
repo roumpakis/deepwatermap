@@ -1,0 +1,30 @@
+# OPTIONAL (only if you want checkpoint outside the image):
+# Adjust hostPath to your Windows folder, via Docker Desktop's Linux mount.
+# Example for your path:
+#   C:\Users\csdro\Downloads\with_cluster\models\deepwatermap\checkpoints
+# becomes:
+#   /run/desktop/mnt/host/c/Users/csdro/Downloads/with_cluster/models/deepwatermap/checkpoints
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: dwm-checkpoints-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /run/desktop/mnt/host/c/Users/csdro/Downloads/with_cluster/models/deepwatermap/checkpoints
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dwm-checkpoints-pvc
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: dwm-checkpoints-pv

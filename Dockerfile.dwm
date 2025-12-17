@@ -1,0 +1,27 @@
+FROM python:3.7-slim
+
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8080 \
+    INFERENCE_SCRIPT=inference.py \
+    CHECKPOINT_PATH=/app/checkpoints/cp.135.ckpt \
+    MAX_PIXELS=25000000
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libgomp1 \
+      libglib2.0-0 \
+      libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir "pip==23.0.1" && \
+    pip install --no-cache-dir -r /app/requirements.txt
+
+COPY . /app
+
+# Optional: create /models/checkpoints so K8s volume mounts can target it
+RUN mkdir -p /models/checkpoints
+
+EXPOSE 8080
+CMD ["python", "app.py"]
